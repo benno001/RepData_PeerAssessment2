@@ -1,0 +1,53 @@
+---
+title: "Reproducible Research - PA2"
+author: "Ben de Haan"
+date: "24 Jul 2014"
+output: html_document
+---
+
+# Title (briefly describe analysis)
+
+## Synopsis (description of analysis in 10 complete sentences)
+
+## Data processing 
+
+### Loading the data and reading in data
+
+Data was downloaded from `https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2` and unzipped.
+
+```{r download and unzip}
+if(!file.exists("stormdata.bz2")){
+    download.file(
+        url = "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", 
+        destfile = "stormdata.bz2", 
+        method = "curl")}
+
+if(!file.exists("UCI HAR Dataset")){
+    unzip("stormdata.bz2")
+}
+
+```
+
+Documentation can be found on `https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf`
+
+(describes (in words and code) how the data were loaded into R and processed for analysis. In particular, your analysis must start from the raw CSV file containing the data. You cannot do any preprocessing outside the document. If preprocessing is time-consuming you may consider using the cache = TRUE option for certain code chunks.)
+
+## Results
+
+## Conclusion
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+summary(cars)
+```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
