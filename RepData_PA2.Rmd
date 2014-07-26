@@ -1,53 +1,184 @@
 ---
-title: "Reproducible Research - PA2"
+title: "Most harmful events in the US in terms of population health and economic consequences"
 author: "Ben de Haan"
 date: "24 Jul 2014"
 output: html_document
 ---
 
-# Title (briefly describe analysis)
+## Synopsis
 
-## Synopsis (description of analysis in 10 complete sentences)
+Two questions must be answered:
+
+1. Across the United States, which types of events are most harmful with respect to population health?
+
+2. Across the United States, which types of events have the greatest economic consequences?
+
+To accomplish this, the storm database from the US National Oceanic and Atmospheric Administration's (NOAA) was examined. To answer the first question, average injuries and fatalities per event type were computed. For the second question, average property and crop damage per event type were computed. 
+
+Most harmful to health in terms of fatalities were: 'Tornadoes, thunderstorm wind and hail', followed by 'cold and snow' and 'tropical storm gordon'. In terms of injuries, the most dangerous event was 'heat wave', followed by 'tropical storm gordon' and 'wild fires.' Events most costly in terms of money were: 'tornadoes, thunderstorm wind and hail', followed by 'heavy rain/severe weather' and 'hurricane/typhoon.' The most costly event type in terms of both fatalities and economic cost was 'tornadoes, thunderstorm wind and hail.'
 
 ## Data processing 
+
+First, some libraries have to be initialized.
+```{r init}
+library(knitr)
+library(lattice)
+```
 
 ### Loading the data and reading in data
 
 Data was downloaded from `https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2` and unzipped.
 
-```{r download and unzip}
-if(!file.exists("stormdata.bz2")){
+```{r download}
+if(!file.exists("stormdata.csv.bz2")){
     download.file(
         url = "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", 
-        destfile = "stormdata.bz2", 
+        destfile = "stormdata.csv.bz2", 
         method = "curl")}
+```
 
-if(!file.exists("UCI HAR Dataset")){
-    unzip("stormdata.bz2")
+Documentation can be found on `https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf`.
+
+For the FAQ, check `https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf`
+
+Reading in the data was done as follows:
+
+```{r reading in, cache = TRUE}
+
+stormdata <- read.table("stormdata.csv", header = TRUE, sep = ",") 
+
+```
+
+After reading in, dimensions were checked. Reading in resulted in 902297 rows and 37 columns.
+
+```{r dimensions and format}
+dim(stormdata)
+head(stormdata)
+str(stormdata)
+```
+
+For pre-processing the harm to heatlh, 
+```{r pre-processing health hazards}
+
+# Compute average fatalities per event type
+avgFatalities <- aggregate(FATALITIES ~ EVTYPE, stormdata, mean)
+
+# Create top ten
+avgFatalitiesOrdered <- avgFatalities[order(avgFatalities$FATALITIES, decreasing = TRUE), ]
+topTenAvgFatalities <- avgFatalitiesOrdered[1:10,]
+
+# Compute average injuries per event type
+avgInjuries <- aggregate(INJURIES ~ EVTYPE, stormdata, mean)
+
+# Create top ten
+avgInjuriesOrdered <- avgInjuries[order(avgInjuries$INJURIES, decreasing = TRUE), ]
+topTenAvgInjuries <- avgInjuriesOrdered[1:10,]
+
+```
+
+Pre-processing economic damage required combining PROPDMG and PROPDMGEXP as well as CROPDMG and CROPDMGEXP. PROPDMG and CROPDMG were interpreted as an amount of dollars. For PROPDMGEXP and CROPDMGEXP, the values 'H', 'K', 'M' and 'B' were interpreted as multipliers of one hundred, one thousand, one million and one billion respectively. PROPDMGEXP and CROPDMGEXP values that did not comply to one of these multipliers were treated as a multiplier of 1. 
+
+The function to convert multipliers to numeric values is presented below.
+```{r multiplier conversion, cache = TRUE}
+convertMultiplier <- function(x) {
+    multiplier = 1
+    
+    if(x == "h" | x == "H"){
+        multiplier = 100
+    } else if (x == "k" | x == "K") {
+        multiplier = 1000
+    } else if (x == "m" | x == "M") {
+        multiplier = 1000000
+    } else if (x == "b" | x == "B") {
+        multiplier = 1000000000
+    }
+    
+    multiplier
 }
 
+# Convert property damage multiplier
+propDmgMultiplier <- sapply(stormdata$PROPDMGEXP, convertMultiplier)
+
+# Convert crop damage multiplier
+cropDmgMultiplier <- sapply(stormdata$CROPDMGEXP, convertMultiplier)
+
+# Calculate property damage
+propDmg <- propDmgMultiplier * stormdata$PROPDMG
+
+# Calculate crop damage
+cropDmg <- cropDmgMultiplier * stormdata$CROPDMG
+
 ```
 
-Documentation can be found on `https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf`
+The crop and property damage were combined to a total amount of damage and then sorted to create a top 10.
 
-(describes (in words and code) how the data were loaded into R and processed for analysis. In particular, your analysis must start from the raw CSV file containing the data. You cannot do any preprocessing outside the document. If preprocessing is time-consuming you may consider using the cache = TRUE option for certain code chunks.)
+```{r further pre-processing economic damage}
+
+# Calculate total damage
+totalDmg <- propDmg + cropDmg
+
+# Add total damage to storm data
+stormdataWithDmg <- cbind(stormdata, totalDmg)
+
+# Compute average damage per event type
+avgDamage <- aggregate(totalDmg ~ EVTYPE, stormdataWithDmg, mean)
+
+# Create top ten
+avgDamageOrdered <- avgDamage[order(avgDamage$totalDmg, decreasing = TRUE), ]
+topTenAvgDamage <- avgDamageOrdered[1:10,]
+
+```
 
 ## Results
+### Summary statistics
+
+```{r summary}
+summary(stormdata$FATALITIES)
+summary(stormdata$INJURIES)
+summary(stormdata$PROPDMG)
+summary(stormdata$CROPDMG)
+```
+
+```{r health hazards}
+barchart(topTenAvgFatalities$EVTYPE ~ topTenAvgFatalities$FATALITIES,
+         xlab = "Average fatalities", 
+         ylab = "Event type", 
+         main = "Average number of fatalities per event type",
+         auto.key=list(space="top", 
+                       columns=1, 
+                       cex.title=1,
+                       text = "Avg # of fatalities"
+                       )
+         )
+
+barchart(topTenAvgInjuries$EVTYPE ~ topTenAvgInjuries$INJURIES,
+         xlab = "Average injuries", 
+         ylab = "Event type", 
+         main = "Average number of injuries per event type",
+         auto.key=list(space="top", 
+                       columns=1, 
+                       text = "Avg # of injuries"
+                       )
+         )
+
+```
+
+As seen from the graph, the most dangerous event in terms of fatalities is 'Tornadoes, thunderstorm wind and hail', followed by 'cold and snow' and 'tropical storm gordon.' In terms of injuries, the most dangerous event is 'heat wave', followed by 'tropical storm gordon' and 'wild fires.'
+
+```{r economic damage}
+barchart(topTenAvgDamage$EVTYPE ~ topTenAvgDamage$totalDmg,
+         xlab = "Average total property and crop damage in $", 
+         ylab = "Event type", 
+         main = "Average total property and crop damage per event type",
+         auto.key=list(space="top", 
+                       columns=1, 
+                       text = "Average total property and crop damage"
+                       )
+         )
+
+```
+
+In terms of economic cost, 'tornadoes, thunderstorm wind and hail' takes first place, followed by 'heavy rain/severe weather' and 'hurricane/typhoon.'
 
 ## Conclusion
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r}
-summary(cars)
-```
-
-You can also embed plots, for example:
-
-```{r, echo=FALSE}
-plot(cars)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+For both the economic cost and fatalities, 'tornadoes, thunderstorm wind and hail' was most dangerous. The total damage is subject to errors made when inputting the data, so results should be interpreted with caution.
